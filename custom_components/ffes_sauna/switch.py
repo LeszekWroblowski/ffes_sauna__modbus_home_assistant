@@ -38,8 +38,8 @@ class FFESSaunaSwitchDescription(SwitchEntityDescription):
 SWITCHES: tuple[FFESSaunaSwitchDescription, ...] = (
     FFESSaunaSwitchDescription(
         key="power",
-        name="Power",
-        icon="mdi:power",
+        name="Heating",
+        icon="mdi:radiator",
         is_on_fn=lambda data: data.get("is_on", False),
         turn_on_fn=lambda coord: coord.async_write_register(REG_CONTROLLER_STATUS, STATUS_HEAT),
         turn_off_fn=lambda coord: coord.async_write_register(REG_CONTROLLER_STATUS, STATUS_OFF),

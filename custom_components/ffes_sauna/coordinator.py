@@ -245,7 +245,8 @@ class FFESSaunaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             # Map controller status to is_on and is_heating for climate entity
             # STATUS_OFF = 0, STATUS_HEAT = 1, STATUS_VENT = 2, STATUS_STBY = 3
-            data["is_on"] = status_num != STATUS_OFF  # On if not OFF
+            # Only consider "on" when actively heating to prevent screen from staying on in standby/vent modes
+            data["is_on"] = status_num == STATUS_HEAT  # On only when actively heating
             data["is_heating"] = status_num == STATUS_HEAT  # Heating only if STATUS_HEAT
 
             # Parse software version and model
