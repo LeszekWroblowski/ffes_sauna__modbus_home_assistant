@@ -13,8 +13,8 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import (
     DOMAIN,
     PROFILE_NAMES,
+    PROFILE_NAME_TO_NUMBER,
     REG_SAUNA_PROFILE,
-    SAUNA_PROFILES,
 )
 from .coordinator import FFESSaunaCoordinator
 
@@ -47,13 +47,20 @@ class FFESSaunaProfileSelect(CoordinatorEntity[FFESSaunaCoordinator], SelectEnti
         """Initialize the select entity."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_profile_select"
-        self._attr_options = list(PROFILE_NAMES.values())
         self._attr_device_info = {
             "identifiers": {(DOMAIN, entry.entry_id)},
             "name": entry.data["name"],
             "manufacturer": "FFES",
             "model": "Sauna Controller",
         }
+
+    @property
+    def options(self) -> list[str]:
+        """Return only profiles supported by the configured controller."""
+        supported_profiles = self.coordinator.data.get("supported_profiles")
+        if supported_profiles:
+            return [PROFILE_NAMES[profile] for profile in supported_profiles]
+        return list(PROFILE_NAMES.values())
 
     @property
     def current_option(self) -> str | None:
@@ -65,19 +72,28 @@ class FFESSaunaProfileSelect(CoordinatorEntity[FFESSaunaCoordinator], SelectEnti
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected profile."""
-        # Find the profile number for the selected name
-        profile_num = next(
-            (k for k, v in SAUNA_PROFILES.items() if PROFILE_NAMES.get(v) == option),
+        profile_name = next(
+            (
+                sauna_profile
+                for sauna_profile, display_name in PROFILE_NAMES.items()
+                if display_name == option
+            ),
             None,
         )
-        
-        if profile_num is None:
+
+        if profile_name is None:
             _LOGGER.error("Invalid profile option: %s", option)
             return
-        
+
+        supported_profiles = self.coordinator.data.get("supported_profiles")
+        if supported_profiles and profile_name not in supported_profiles:
+            _LOGGER.error("Profile %s is not supported by controller model", profile_name)
+            return
+
+        profile_num = PROFILE_NAME_TO_NUMBER[profile_name]
+
         try:
             await self.coordinator.async_write_register(REG_SAUNA_PROFILE, profile_num)
-            await self.coordinator.async_request_refresh()
         except Exception as err:
             _LOGGER.error("Error setting profile: %s", err)
             raise

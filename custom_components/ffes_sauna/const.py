@@ -34,6 +34,8 @@ REG_PAIRING_MODE: Final = 41  # REG[42]
 REG_FROST_PROTECTION: Final = 50  # REG[51]
 REG_FROST_PROTECTION_STATUS: Final = 51  # REG[52]
 REG_INFRARED_MIX_STATUS: Final = 52  # REG[53]
+REG_INFRARED_MIX_MODE: Final = 53  # REG[54]
+REG_SECOND_TEMP_FUNCTION_STATUS: Final = 55  # REG[56]
 
 # 16-bit registers (holding)
 REG_TEMPERATURE_SET: Final = 0  # REG[1]
@@ -87,6 +89,29 @@ PROFILE_NAMES: Final = {
     "steam_bath": "Steam Bath",
     "infrared_cpir": "Infrared CPIR",
     "infrared_mix": "Infrared MIX",
+}
+
+PROFILE_NAME_TO_NUMBER: Final = {
+    profile_name: profile_number
+    for profile_number, profile_name in SAUNA_PROFILES.items()
+}
+
+# Controller model capability bits from FFES documentation (REG[50])
+MODEL_IR: Final = 1 << 0
+MODEL_HEATER: Final = 1 << 1
+MODEL_STEAM_BATH: Final = 1 << 2
+MODEL_WET: Final = 1 << 3
+MODEL_AROMA: Final = 1 << 4
+MODEL_FAN: Final = 1 << 5
+MODEL_IR_CPIR: Final = 1 << 6
+
+PROFILE_MODEL_MASKS: Final = {
+    PROFILE_INFRARED: MODEL_IR,
+    PROFILE_DRY_SAUNA: MODEL_HEATER,
+    PROFILE_WET_SAUNA: MODEL_WET,
+    PROFILE_VENTILATION: MODEL_FAN,
+    PROFILE_STEAM_BATH: MODEL_STEAM_BATH,
+    PROFILE_INFRARED_CPIR: MODEL_IR_CPIR,
 }
 
 # Controller Status Values
@@ -144,3 +169,26 @@ ATTR_ERROR_MESSAGE: Final = "error_message"
 ATTR_CONTROLLER_STATUS: Final = "controller_status"
 ATTR_SOFTWARE_VERSION: Final = "software_version"
 ATTR_MODEL: Final = "model"
+
+
+def get_supported_profile_numbers(controller_model: int) -> list[int]:
+    """Return the profile numbers supported by the controller model."""
+    supported_profiles: list[int] = []
+
+    for profile_number in (
+        PROFILE_INFRARED,
+        PROFILE_DRY_SAUNA,
+        PROFILE_WET_SAUNA,
+        PROFILE_VENTILATION,
+        PROFILE_STEAM_BATH,
+        PROFILE_INFRARED_CPIR,
+    ):
+        if controller_model & PROFILE_MODEL_MASKS[profile_number]:
+            supported_profiles.append(profile_number)
+
+    # Infrared MIX is available on hybrid controllers that expose both
+    # the classic heater and the infrared subsystem.
+    if controller_model & MODEL_HEATER and controller_model & MODEL_IR:
+        supported_profiles.append(PROFILE_INFRARED_MIX)
+
+    return supported_profiles

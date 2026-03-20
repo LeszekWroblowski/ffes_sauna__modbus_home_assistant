@@ -80,6 +80,9 @@
       },
       "infrared_mix": {
         "name": "Infrared Mix"
+      },
+      "fan_output": {
+        "name": "Fan Output"
       }
     },
     "number": {
@@ -133,6 +136,11 @@
     "climate": {
       "thermostat": {
         "name": "Thermostat"
+      }
+    },
+    "light": {
+      "light": {
+        "name": "Light"
       }
     }
   },

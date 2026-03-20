@@ -17,6 +17,7 @@ from .const import (
     REG_CONTROLLER_STATUS,
     REG_FROST_PROTECTION,
     REG_INFRARED_MIX_STATUS,
+    REG_OUT7_STATE,
     REG_VENTILATION_STATE,
     STATUS_HEAT,
     STATUS_OFF,
@@ -67,6 +68,14 @@ SWITCHES: tuple[FFESSaunaSwitchDescription, ...] = (
         is_on_fn=lambda data: data.get("infrared_mix_status", False),
         turn_on_fn=lambda coord: coord.async_write_coil(REG_INFRARED_MIX_STATUS, True),
         turn_off_fn=lambda coord: coord.async_write_coil(REG_INFRARED_MIX_STATUS, False),
+    ),
+    FFESSaunaSwitchDescription(
+        key="fan_output",
+        name="Fan Output",
+        icon="mdi:fan-chevron-up",
+        is_on_fn=lambda data: data.get("out7_state", False),
+        turn_on_fn=lambda coord: coord.async_write_coil(REG_OUT7_STATE, True),
+        turn_off_fn=lambda coord: coord.async_write_coil(REG_OUT7_STATE, False),
     ),
 )
 
@@ -120,7 +129,6 @@ class FFESSaunaSwitch(CoordinatorEntity[FFESSaunaCoordinator], SwitchEntity):
         if self.entity_description.turn_on_fn:
             try:
                 await self.entity_description.turn_on_fn(self.coordinator)
-                await self.coordinator.async_request_refresh()
             except Exception as err:
                 _LOGGER.error("Error turning on %s: %s", self.entity_id, err)
                 raise
@@ -130,7 +138,6 @@ class FFESSaunaSwitch(CoordinatorEntity[FFESSaunaCoordinator], SwitchEntity):
         if self.entity_description.turn_off_fn:
             try:
                 await self.entity_description.turn_off_fn(self.coordinator)
-                await self.coordinator.async_request_refresh()
             except Exception as err:
                 _LOGGER.error("Error turning off %s: %s", self.entity_id, err)
                 raise

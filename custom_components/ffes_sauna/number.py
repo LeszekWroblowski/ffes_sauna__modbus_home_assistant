@@ -194,7 +194,6 @@ class FFESSaunaNumber(CoordinatorEntity[FFESSaunaCoordinator], NumberEntity):
         if self.entity_description.set_value_fn:
             try:
                 await self.entity_description.set_value_fn(self.coordinator, value)
-                await self.coordinator.async_request_refresh()
             except Exception as err:
                 _LOGGER.error("Error setting value for %s: %s", self.entity_id, err)
                 raise

@@ -45,19 +45,19 @@ BINARY_SENSORS: tuple[FFESSaunaBinarySensorDescription, ...] = (
         key="frost_protection_active",
         name="Frost Protection Active",
         icon="mdi:snowflake-alert",
-        is_on_fn=lambda data: data.get("frost_protection_active", False),
+        is_on_fn=lambda data: data.get("frost_protection_status", False),
     ),
     FFESSaunaBinarySensorDescription(
         key="wifi_connected",
         name="WiFi Connected",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        is_on_fn=lambda data: data.get("wifi_connected", False),
+        is_on_fn=lambda data: data.get("wifi_connection", False),
     ),
     FFESSaunaBinarySensorDescription(
         key="server_connected",
         name="Server Connected",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        is_on_fn=lambda data: data.get("server_connected", False),
+        is_on_fn=lambda data: data.get("server_connection", False),
     ),
 )
 
