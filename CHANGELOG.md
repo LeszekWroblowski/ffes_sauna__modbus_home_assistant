@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.9] - 2026-03-20
+
+### Added
+- Added real Home Assistant services for `start_session`, `stop_session`, and `set_profile`
+- Added controller-model-aware profile filtering based on `REG[50]`
+- Added sauna light entity mapped to the FFES light output
+- Added physical fan output switch mapped to the FFES 230V fan output
+- Added Modbus connection validation during config flow setup
+
+### Fixed
+- Fixed binary sensor mappings for WiFi, server connection, and frost protection status
+- Fixed climate state reporting so standby and ventilation are no longer shown as fully off
+- Fixed profile handling so unsupported profiles are hidden and rejected when selected
+- Fixed duplicated refresh requests after write operations
+
+### Changed
+- Updated integration behavior to align with FFES Modbus documentation for controller capabilities and output handling
+- Improved runtime safeguards when changing profiles while the sauna is active
+
 ## [1.0.6] - 2025-10-30
 
 ### Fixed
