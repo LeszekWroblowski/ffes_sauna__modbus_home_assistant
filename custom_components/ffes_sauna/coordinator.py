@@ -251,9 +251,10 @@ class FFESSaunaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             data["controller_status"] = status_num
             data["controller_status_name"] = STATUS_NAMES.get(status_num, "Unknown")
 
-            # Treat standby/ventilation as active controller states so HA does not
-            # render an active session as fully off.
-            data["is_on"] = status_num != STATUS_OFF
+            # Safety-first semantics: expose "on" only when the controller is
+            # actively heating. Standby/ventilation remain visible via the
+            # status sensor without presenting as active heating after HA restarts.
+            data["is_on"] = status_num == STATUS_HEAT
             data["is_heating"] = status_num == STATUS_HEAT
 
             # Parse software version and model

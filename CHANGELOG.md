@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.11] - 2026-03-20
+
+### Fixed
+- Restored safety-first power semantics so Home Assistant only reports heating as `on` during actual `STATUS_HEAT`
+- Prevented standby or ventilation states from appearing as active heating after Home Assistant restarts
+
 ## [1.0.10] - 2026-03-20
 
 ### Fixed
