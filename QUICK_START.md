@@ -32,6 +32,9 @@ After configuration, you should see these entities:
 ### Main Control
 - `climate.my_sauna_thermostat` - Temperature control
 - `switch.my_sauna_power` - Power on/off
+- `select.my_sauna_profile` - Profile selector limited to profiles supported by your controller
+- `light.my_sauna_light` - Sauna light control
+- `switch.my_sauna_fan_output` - Physical FFES fan output control
 
 ### Try This:
 ```yaml
@@ -46,6 +49,16 @@ target:
   entity_id: climate.my_sauna_thermostat
 data:
   temperature: 85
+
+# Or turn on sauna light
+service: light.turn_on
+target:
+  entity_id: light.my_sauna_light
+
+# Or turn on physical fan output
+service: switch.turn_on
+target:
+  entity_id: switch.my_sauna_fan_output
 ```
 
 ## 4. Basic Automation
@@ -98,6 +111,10 @@ data:
   duration: 60
 ```
 
+Note:
+- `profile` must be supported by the connected FFES controller model
+- if you change to a different profile, the controller must be in `Off` or `Standby`
+
 ### Stop Session
 ```yaml
 service: ffes_sauna.stop_session
@@ -126,6 +143,8 @@ data:
 | 6 | infrared_cpir | Infrared CPIR |
 | 7 | infrared_mix | Infrared MIX |
 
+Only profiles supported by your controller model (`REG[50]`) are shown in Home Assistant.
+
 ## 8. Troubleshooting
 
 ### Can't connect?
@@ -145,6 +164,11 @@ data:
 ### Read errors?
 - Verify Slave ID (usually 1)
 - Check firmware version (need 1.21/6.21+)
+
+### Light or fan output not behaving as expected?
+- `light.my_sauna_light` is mapped to FFES `OUT3_STATE`
+- `switch.my_sauna_fan_output` is mapped to FFES `OUT7_STATE`
+- if your controller wiring differs, the mapping may need adjustment
 
 ## 9. Next Steps
 
