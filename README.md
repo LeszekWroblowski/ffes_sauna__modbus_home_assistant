@@ -9,6 +9,7 @@ Home Assistant integration for FFES Sauna controllers with Modbus TCP support.
 
 - 🌡️ **Temperature Control** - Set and monitor sauna temperature
 - ⏱️ **Session Timer** - Control session duration (1-2000 minutes)
+- 🎛️ **Controller-Aware Profiles** - Available profiles are filtered automatically based on the FFES controller model (`REG[50]`)
 - 🎛️ **Multiple Profiles** - Support for all sauna types:
   - Infrared Sauna
   - Dry Sauna
@@ -19,6 +20,8 @@ Home Assistant integration for FFES Sauna controllers with Modbus TCP support.
   - Infrared MIX
 - 💧 **Humidity Control** - Monitor and control humidity levels
 - 🔄 **Ventilation Control** - Automatic ventilation management
+- 💡 **Light Control** - Control the sauna light output from Home Assistant
+- 🌀 **Physical Fan Output** - Control the FFES 230V fan output directly
 - 🌿 **Aromatherapy** - Control aromatherapy intensity
 - ⚠️ **Error Monitoring** - Real-time error code detection
 - 🎚️ **Advanced Controls** - CPIR group controls, emergency settings, and more
@@ -95,6 +98,10 @@ After configuration, the integration creates the following entities:
 - `switch.sauna_ventilation` - Control ventilation
 - `switch.sauna_frost_protection` - Enable/disable frost protection
 - `switch.sauna_infrared_mix` - Enable/disable infrared mix mode
+- `switch.sauna_fan_output` - Control the physical FFES fan output (230V)
+
+### Lights
+- `light.sauna_light` - Control the sauna light output
 
 ### Numbers
 - `number.sauna_session_time` - Set session duration (1-2000 minutes)
@@ -107,7 +114,7 @@ After configuration, the integration creates the following entities:
 - `number.sauna_cpir_group_4` - CPIR Group 4 power (1-100%)
 
 ### Select
-- `select.sauna_profile` - Choose sauna profile
+- `select.sauna_profile` - Choose sauna profile from profiles supported by the connected controller
 
 ### Binary Sensors
 - `binary_sensor.sauna_error` - Error status
@@ -119,6 +126,8 @@ After configuration, the integration creates the following entities:
 
 ### `ffes_sauna.start_session`
 Start a sauna session with custom parameters.
+
+If the requested profile is not supported by the connected controller model, the service call is rejected.
 
 ```yaml
 service: ffes_sauna.start_session
@@ -142,6 +151,8 @@ target:
 
 ### `ffes_sauna.set_profile`
 Change sauna profile.
+
+FFES allows profile changes only when the controller is `Off` or `Standby`.
 
 ```yaml
 service: ffes_sauna.set_profile
@@ -260,6 +271,10 @@ cards:
         name: Profile
       - entity: switch.sauna_ventilation
         name: Ventilation
+      - entity: switch.sauna_fan_output
+        name: Fan Output
+      - entity: light.sauna_light
+        name: Light
       - entity: number.sauna_aromatherapy
         name: Aromatherapy
   
@@ -307,10 +322,16 @@ cards:
 - Check the scan_interval setting (default: 10 seconds)
 - Verify Modbus communication in Home Assistant logs
 - Ensure no other device is blocking Modbus communication
+- Check whether the selected profile is supported by your controller model
 
 ### Reading Errors
 - Check that Slave ID matches your controller (usually 1)
 - Verify your controller firmware version (1.21/6.21 or newer)
+
+### Notes About Outputs
+- `light.sauna_light` is mapped to the FFES light output (`OUT3_STATE`)
+- `switch.sauna_fan_output` is mapped to the FFES physical fan output (`OUT7_STATE`)
+- If your board wiring or controller configuration differs, these mappings may need adjustment
 
 ## Debug Logging
 
