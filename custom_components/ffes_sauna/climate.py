@@ -23,6 +23,8 @@ from .const import (
     REG_TEMPERATURE_SET,
     STATUS_HEAT,
     STATUS_OFF,
+    STATUS_STBY,
+    STATUS_VENT,
     TEMP_LIMITS,
 )
 from .coordinator import FFESSaunaCoordinator
@@ -81,16 +83,22 @@ class FFESSaunaClimate(CoordinatorEntity[FFESSaunaCoordinator], ClimateEntity):
     @property
     def hvac_mode(self) -> HVACMode:
         """Return the current HVAC mode."""
-        if self.coordinator.data.get("is_on"):
+        if self.coordinator.data.get("controller_status") != STATUS_OFF:
             return HVACMode.HEAT
         return HVACMode.OFF
 
     @property
     def hvac_action(self) -> HVACAction:
         """Return the current HVAC action."""
-        if self.coordinator.data.get("is_heating"):
+        status = self.coordinator.data.get("controller_status")
+
+        if status == STATUS_HEAT:
             return HVACAction.HEATING
-        if self.coordinator.data.get("is_on"):
+        if status == STATUS_VENT:
+            return HVACAction.FAN
+        if status == STATUS_STBY:
+            return HVACAction.IDLE
+        if status != STATUS_OFF:
             return HVACAction.IDLE
         return HVACAction.OFF
 
@@ -135,7 +143,6 @@ class FFESSaunaClimate(CoordinatorEntity[FFESSaunaCoordinator], ClimateEntity):
             await self.coordinator.async_write_register(
                 REG_TEMPERATURE_SET, int(temperature)
             )
-            await self.coordinator.async_request_refresh()
         except Exception as err:
             _LOGGER.error("Error setting temperature: %s", err)
             raise
@@ -147,8 +154,6 @@ class FFESSaunaClimate(CoordinatorEntity[FFESSaunaCoordinator], ClimateEntity):
                 await self.coordinator.async_write_register(REG_CONTROLLER_STATUS, STATUS_HEAT)
             elif hvac_mode == HVACMode.OFF:
                 await self.coordinator.async_write_register(REG_CONTROLLER_STATUS, STATUS_OFF)
-            
-            await self.coordinator.async_request_refresh()
         except Exception as err:
             _LOGGER.error("Error setting HVAC mode: %s", err)
             raise

@@ -6,9 +6,14 @@ from typing import Any
 
 import voluptuous as vol
 
+try:
+    from pymodbus.client import ModbusTcpClient
+except ImportError:
+    from pymodbus.client.sync import ModbusTcpClient as ModbusTcpClient
+
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT, CONF_SCAN_INTERVAL
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 
 from .const import (
@@ -23,6 +28,33 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+def _validate_connection(host: str, port: int) -> bool:
+    """Validate that the Modbus TCP endpoint is reachable."""
+    client = ModbusTcpClient(host=host, port=port, timeout=5)
+    try:
+        return bool(client.connect())
+    finally:
+        client.close()
+
+
+async def async_validate_input(
+    hass: HomeAssistant,
+    user_input: dict[str, Any],
+) -> None:
+    """Validate user input before creating the config entry."""
+    connected = await hass.async_add_executor_job(
+        _validate_connection,
+        user_input[CONF_HOST],
+        user_input[CONF_PORT],
+    )
+    if not connected:
+        raise CannotConnect
+
+
+class CannotConnect(Exception):
+    """Error to indicate we cannot connect."""
+
+
 class FFESSaunaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for FFES Sauna."""
 
@@ -35,16 +67,23 @@ class FFESSaunaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            # Check if already configured
-            await self.async_set_unique_id(
-                f"{user_input[CONF_HOST]}_{user_input[CONF_PORT]}_{user_input[CONF_SLAVE]}"
-            )
-            self._abort_if_unique_id_configured()
+            try:
+                await async_validate_input(self.hass, user_input)
+            except CannotConnect:
+                errors["base"] = "cannot_connect"
+            except Exception:
+                _LOGGER.exception("Unexpected exception while validating FFES Sauna config")
+                errors["base"] = "unknown"
+            else:
+                await self.async_set_unique_id(
+                    f"{user_input[CONF_HOST]}_{user_input[CONF_PORT]}_{user_input[CONF_SLAVE]}"
+                )
+                self._abort_if_unique_id_configured()
 
-            return self.async_create_entry(
-                title=user_input[CONF_NAME],
-                data=user_input,
-            )
+                return self.async_create_entry(
+                    title=user_input[CONF_NAME],
+                    data=user_input,
+                )
 
         # Show configuration form
         data_schema = vol.Schema(

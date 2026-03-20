@@ -80,6 +80,9 @@
       },
       "infrared_mix": {
         "name": "Podczerwień MIX"
+      },
+      "fan_output": {
+        "name": "Wyjście wentylatora"
       }
     },
     "number": {
@@ -133,6 +136,11 @@
     "climate": {
       "thermostat": {
         "name": "Termostat"
+      }
+    },
+    "light": {
+      "light": {
+        "name": "Oświetlenie"
       }
     }
   },

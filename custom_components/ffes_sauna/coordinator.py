@@ -34,6 +34,13 @@ from .const import (
     REG_HUMIDITY_ACTUAL,
     REG_INFRARED_MIX_STATUS,
     REG_MODULE_SOFTWARE_VERSION,
+    REG_OUT1_STATE,
+    REG_OUT2_STATE,
+    REG_OUT3_STATE,
+    REG_OUT4_STATE,
+    REG_OUT5_STATE,
+    REG_OUT6_STATE,
+    REG_OUT7_STATE,
     REG_SAUNA_PROFILE,
     REG_SERVER_CONNECTION,
     REG_SESSION_TIME,
@@ -47,8 +54,9 @@ from .const import (
     REGISTER_COUNT,
     SAUNA_PROFILES,
     STATUS_NAMES,
-    STATUS_OFF,
     STATUS_HEAT,
+    STATUS_OFF,
+    get_supported_profile_numbers,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -243,15 +251,21 @@ class FFESSaunaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             data["controller_status"] = status_num
             data["controller_status_name"] = STATUS_NAMES.get(status_num, "Unknown")
 
-            # Map controller status to is_on and is_heating for climate entity
-            # STATUS_OFF = 0, STATUS_HEAT = 1, STATUS_VENT = 2, STATUS_STBY = 3
-            # Only consider "on" when actively heating to prevent screen from staying on in standby/vent modes
-            data["is_on"] = status_num == STATUS_HEAT  # On only when actively heating
-            data["is_heating"] = status_num == STATUS_HEAT  # Heating only if STATUS_HEAT
+            # Treat standby/ventilation as active controller states so HA does not
+            # render an active session as fully off.
+            data["is_on"] = status_num != STATUS_OFF
+            data["is_heating"] = status_num == STATUS_HEAT
 
             # Parse software version and model
             data["software_version"] = registers[REG_MODULE_SOFTWARE_VERSION]
             data["controller_model"] = registers[REG_CONTROLLER_MODEL]
+            data["supported_profile_numbers"] = get_supported_profile_numbers(
+                data["controller_model"]
+            )
+            data["supported_profiles"] = [
+                SAUNA_PROFILES[profile_number]
+                for profile_number in data["supported_profile_numbers"]
+            ]
 
             # Read coil registers (1-bit values)
             # Coils use same offset: physical address 1 = REG[1]
@@ -276,6 +290,18 @@ class FFESSaunaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             data["frost_protection_status"] = coils[REG_FROST_PROTECTION_STATUS]
             data["ventilation_state"] = coils[REG_VENTILATION_STATE]
             data["infrared_mix_status"] = coils[REG_INFRARED_MIX_STATUS]
+            data["out1_state"] = coils[REG_OUT1_STATE]
+            data["out2_state"] = coils[REG_OUT2_STATE]
+            data["out3_state"] = coils[REG_OUT3_STATE]
+            data["out4_state"] = coils[REG_OUT4_STATE]
+            data["out5_state"] = coils[REG_OUT5_STATE]
+            data["out6_state"] = coils[REG_OUT6_STATE]
+            data["out7_state"] = coils[REG_OUT7_STATE]
+
+            # Compatibility aliases used by entity platforms.
+            data["wifi_connected"] = data["wifi_connection"]
+            data["server_connected"] = data["server_connection"]
+            data["frost_protection_active"] = data["frost_protection_status"]
 
             _LOGGER.debug("Successfully read registers: %s", data)
             return data
