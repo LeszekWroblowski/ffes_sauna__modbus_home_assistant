@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from homeassistant.components.light import LightEntity
+from homeassistant.components.light import ColorMode, LightEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -32,6 +32,8 @@ class FFESSaunaLight(CoordinatorEntity[FFESSaunaCoordinator], LightEntity):
     _attr_has_entity_name = True
     _attr_name = "Light"
     _attr_icon = "mdi:lightbulb"
+    _attr_supported_color_modes = {ColorMode.ONOFF}
+    _attr_color_mode = ColorMode.ONOFF
 
     def __init__(
         self,
