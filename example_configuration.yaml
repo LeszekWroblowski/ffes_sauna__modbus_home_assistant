@@ -116,6 +116,28 @@ automation:
         target:
           entity_id: switch.sauna_ventilation
 
+  # Turn on sauna light when session starts
+  - alias: "Sauna Light On During Session"
+    trigger:
+      - platform: state
+        entity_id: switch.sauna_power
+        to: "on"
+    action:
+      - service: light.turn_on
+        target:
+          entity_id: light.sauna_light
+
+  # Turn off sauna light when session ends
+  - alias: "Sauna Light Off After Session"
+    trigger:
+      - platform: state
+        entity_id: switch.sauna_power
+        to: "off"
+    action:
+      - service: light.turn_off
+        target:
+          entity_id: light.sauna_light
+
   # Voice control integration
   - alias: "Alexa - Start Sauna"
     trigger:
@@ -148,6 +170,9 @@ script:
           profile: 2
           temperature: 85
           duration: 60
+      - service: light.turn_on
+        target:
+          entity_id: light.sauna_light
       - service: notify.mobile_app
         data:
           message: "Sauna starting - will be ready in ~20 minutes"
@@ -275,6 +300,10 @@ cards:
         name: Session Time
       - entity: select.sauna_profile
         name: Profile
+      - entity: light.sauna_light
+        name: Sauna Light
+      - entity: switch.sauna_fan_output
+        name: Fan Output
   
   - type: conditional
     conditions:
@@ -320,6 +349,10 @@ title: Advanced Controls
 entities:
   - entity: switch.sauna_ventilation
     name: Ventilation
+  - entity: switch.sauna_fan_output
+    name: Fan Output
+  - entity: light.sauna_light
+    name: Sauna Light
   - entity: number.sauna_aromatherapy
     name: Aromatherapy
   - entity: switch.sauna_frost_protection
@@ -327,3 +360,8 @@ entities:
   - type: divider
   - entity: sensor.sauna_software_version
     name: Software Version
+
+# Notes:
+# - The profile selector only shows profiles supported by the controller model (REG[50])
+# - light.sauna_light is mapped to FFES OUT3_STATE
+# - switch.sauna_fan_output is mapped to FFES OUT7_STATE

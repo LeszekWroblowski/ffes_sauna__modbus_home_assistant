@@ -64,6 +64,7 @@ Choose one of the following installation methods:
    ├── config_flow.py
    ├── coordinator.py
    ├── climate.py
+   ├── light.py
    ├── sensor.py
    ├── switch.py
    ├── number.py
@@ -130,12 +131,13 @@ Check that entities were created:
    - You should see your device
 
 2. **Check Entities**
-   You should see approximately 25-30 entities:
+   You should see approximately 27-32 entities, depending on controller model:
    - ✅ 1 Climate (thermostat)
    - ✅ 11 Sensors (temperature, humidity, status, etc.)
-   - ✅ 4 Switches (power, ventilation, etc.)
+   - ✅ 5 Switches (power, ventilation, fan output, etc.)
+   - ✅ 1 Light (sauna light output)
    - ✅ 8 Numbers (session time, aromatherapy, etc.)
-   - ✅ 1 Select (profile)
+   - ✅ 1 Select (profile selector filtered by controller capabilities)
    - ✅ 5 Binary Sensors (error, heating, etc.)
 
 3. **Test Basic Control**
@@ -184,6 +186,7 @@ Check that entities were created:
 - Increase scan interval (try 30 seconds)
 - Check logs for Modbus errors
 - Verify no other device is using Modbus simultaneously
+- Verify that the selected profile is supported by your controller model
 
 ### Problem: Read/Write Errors
 
@@ -250,8 +253,17 @@ Go through this checklist:
 - [ ] Set session time
 - [ ] Control aromatherapy
 - [ ] Test ventilation
+- [ ] Test sauna light
+- [ ] Test physical fan output
 - [ ] Check error monitoring
 - [ ] Try services (start_session, stop_session)
+
+## Notes About Profiles and Outputs
+
+- The integration reads `REG[50]` (`CONTROLLER_MODEL`) and only exposes profiles supported by your controller
+- `light.my_sauna_light` is mapped to the FFES light output (`OUT3_STATE`)
+- `switch.my_sauna_fan_output` is mapped to the FFES physical fan output (`OUT7_STATE`)
+- If your hardware wiring differs, these output mappings may need to be adjusted
 
 ## Next Steps
 
