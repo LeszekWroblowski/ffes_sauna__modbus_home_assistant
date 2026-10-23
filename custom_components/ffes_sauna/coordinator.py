@@ -1,9 +1,11 @@
 """DataUpdateCoordinator for FFES Sauna."""
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import timedelta
 import logging
-from typing import Any
+from threading import RLock
+from typing import Any, TypeVar
 
 try:
     from pymodbus.client import ModbusTcpClient
@@ -60,6 +62,7 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+_ResultT = TypeVar("_ResultT")
 
 # Detect pymodbus version to use correct parameter names
 # v3.0-3.9: uses slave= parameter
@@ -105,7 +108,8 @@ class FFESSaunaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.port = port
         self.slave = slave
         self._client: ModbusTcpClient | None = None
-        self._connect()
+        self._io_lock = RLock()
+        self._stopping = False
 
     def _connect(self) -> None:
         """Connect to the Modbus device."""
@@ -118,17 +122,49 @@ class FFESSaunaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 timeout=5,
             )
             # Connect to the device
-            self._client.connect()
+            if not self._client.connect():
+                raise ModbusException(
+                    f"Cannot connect to FFES sauna at {self.host}:{self.port}"
+                )
             _LOGGER.debug("Modbus client created and connected for %s:%s (slave=%s)", self.host, self.port, self.slave)
         except Exception as err:
             _LOGGER.error("Error creating Modbus client: %s", err)
             raise
 
+    def _reset_client(self) -> None:
+        """Discard a failed client; caller must hold the I/O lock."""
+        client, self._client = self._client, None
+        if client is not None:
+            try:
+                client.close()
+            except OSError as err:
+                _LOGGER.warning("Error closing FFES Modbus connection: %s", err)
+
+    def _execute_modbus(
+        self, operation: Callable[..., _ResultT], *args: Any
+    ) -> _ResultT:
+        """Serialize I/O and discard unusable connections without replaying commands."""
+        with self._io_lock:
+            if self._stopping:
+                raise ModbusException("FFES coordinator is shutting down")
+            try:
+                if self._client is None:
+                    self._connect()
+                return operation(*args)
+            except (OSError, ModbusException):
+                self._reset_client()
+                raise
+
+    def _close_client(self) -> None:
+        """Wait for in-flight I/O before closing the connection."""
+        with self._io_lock:
+            self._reset_client()
+
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from Modbus device."""
         try:
             return await self.hass.async_add_executor_job(self._read_registers)
-        except ModbusException as err:
+        except (OSError, ModbusException) as err:
             raise UpdateFailed(f"Error communicating with device: {err}") from err
         except Exception as err:
             _LOGGER.error("Unexpected error reading Modbus registers: %s", err)
@@ -179,6 +215,10 @@ class FFESSaunaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return [0] * count
 
     def _read_registers(self) -> dict[str, Any]:
+        """Read a complete snapshot, resetting failed transports for the next poll."""
+        return self._execute_modbus(self._read_registers_connected)
+
+    def _read_registers_connected(self) -> dict[str, Any]:
         """Read all necessary registers from the device."""
         data = {}
 
@@ -307,13 +347,17 @@ class FFESSaunaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.debug("Successfully read registers: %s", data)
             return data
 
-        except ModbusException:
+        except (OSError, ModbusException):
             raise
         except Exception as err:
             _LOGGER.error("Error parsing Modbus data: %s", err)
             raise ModbusException(f"Error parsing Modbus data: {err}") from err
 
     def _write_register_sync(self, address: int, value: int) -> None:
+        """Send a register command once; discard the connection on transport failure."""
+        self._execute_modbus(self._write_register_connected, address, value)
+
+    def _write_register_connected(self, address: int, value: int) -> None:
         """Synchronously write a register.
 
         Args:
@@ -332,6 +376,10 @@ class FFESSaunaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         _LOGGER.debug("Wrote value %s to register %s (physical %s)", value, address, physical_addr)
 
     def _write_coil_sync(self, address: int, value: bool) -> None:
+        """Send a coil command once; discard the connection on transport failure."""
+        self._execute_modbus(self._write_coil_connected, address, value)
+
+    def _write_coil_connected(self, address: int, value: bool) -> None:
         """Synchronously write a coil.
 
         Args:
@@ -382,6 +430,7 @@ class FFESSaunaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def async_shutdown(self) -> None:
         """Shutdown coordinator."""
-        if self._client:
-            await self.hass.async_add_executor_job(self._client.close)
-            _LOGGER.debug("Modbus client closed")
+        self._stopping = True
+        await super().async_shutdown()
+        await self.hass.async_add_executor_job(self._close_client)
+        _LOGGER.debug("Modbus client closed")

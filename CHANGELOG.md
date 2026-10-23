@@ -115,6 +115,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Recover from broken Modbus connections on the next poll without replaying write commands.
+- Serialize Modbus I/O with connection cleanup and perform initial connection in the executor.
+- Run the base coordinator shutdown cleanup when unloading the integration.
+
 ### Planned Features
 - Auto-discovery support
 - Session history tracking
